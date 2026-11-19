@@ -17,6 +17,9 @@ from html.parser import HTMLParser
 from .news import norm_name
 
 BASE = "https://www.basketball-reference.com/leagues/"
+# Terugval: snapshot die een GitHub Action twee keer per dag ververst (zie .github/workflows/bbref.yml)
+SNAPSHOT_URL = "https://raw.githubusercontent.com/MOvermans34/fantasy-manager-nba/main/snapshots/bbref_{season}.json"
+SNAPSHOT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "snapshots")
 UA = "fantasy-manager-nba/1.0 (prive league-app; 2 verzoeken per verversing)"
 
 # BBRef-afkortingen -> ESPN-afkortingen (fantasy-API)
@@ -128,15 +131,24 @@ def parse_teams(html):
     return teams
 
 
+def scrape(season):
+    players = parse_players(fetch(f"{BASE}NBA_{season}_advanced.html"))
+    time.sleep(6)  # ruim boven de crawl-delay van 3 s
+    teams = parse_teams(fetch(f"{BASE}NBA_{season}.html"))
+    return {"players": players, "teams": teams, "updated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+
+
 class BBRef:
     def __init__(self, season, data_dir, log=print, max_age=12 * 3600):
         self.season, self.log, self.max_age = season, log, max_age
         self.path = os.path.join(data_dir, f"bbref_{season}.json")
         self.players, self.teams, self.updated = {}, {}, None
+        self.source, self.error = None, None
         try:
             with open(self.path, encoding="utf-8") as f:
                 d = json.load(f)
             self.players, self.teams, self.updated = d["players"], d["teams"], d.get("updated")
+            self.source = "cache"
         except Exception:
             pass
 
@@ -147,22 +159,62 @@ class BBRef:
             return float("inf")
 
     def refresh(self, force=False):
+        """Vers ophalen; lukt dat niet (sommige cloudservers worden door de site geblokkeerd),
+        dan de snapshot uit de GitHub-repo, en anders de snapshot die in het image zit."""
         if not force and self.age() < self.max_age and self.players:
             return False
-        players = parse_players(fetch(f"{BASE}NBA_{self.season}_advanced.html"))
-        time.sleep(6)  # ruim boven de crawl-delay van 3 s
-        teams = parse_teams(fetch(f"{BASE}NBA_{self.season}.html"))
-        if len(players) < 100 or len(teams) < 30:
-            raise RuntimeError(f"onverwachte pagina-indeling ({len(players)} spelers, {len(teams)} teams)")
-        self.players, self.teams = players, teams
-        self.updated = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        errors = []
+        for source, load in (("basketball-reference.com", self._direct), ("snapshot (GitHub)", self._remote),
+                             ("snapshot (image)", self._bundled)):
+            try:
+                d = load()
+                if not d:
+                    continue
+                players, teams = d["players"], d["teams"]
+                if len(players) < 100 or len(teams) < 30:
+                    raise RuntimeError(f"onvolledige data ({len(players)} spelers, {len(teams)} teams)")
+            except Exception as e:
+                errors.append(f"{source}: {e}")
+                self.log(f"LET OP Basketball Reference via {source} mislukt: {e}")
+                continue
+            self.players, self.teams = players, teams
+            self.updated = d.get("updated") or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            self.source, self.error = source, "; ".join(errors) or None
+            self._save()
+            self.log(f"Basketball Reference via {source}: {len(players)} spelers, {len(teams)} teams "
+                     f"(stand {self.updated}).")
+            return True
+        self.error = "; ".join(errors) or "geen bron beschikbaar"
+        raise RuntimeError(self.error)
+
+    def _direct(self):
+        return scrape(self.season)
+
+    def _remote(self):
+        url = os.environ.get("BBREF_SNAPSHOT_URL", SNAPSHOT_URL).format(season=self.season)
+        if not url:
+            return None
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.load(r)
+
+    def _bundled(self):
+        path = os.path.join(SNAPSHOT_DIR, f"bbref_{self.season}.json")
+        if not os.path.exists(path):
+            return None
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+
+    def _save(self):
+        os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
         tmp = self.path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump({"players": players, "teams": teams, "updated": self.updated}, f)
+            json.dump({"players": self.players, "teams": self.teams, "updated": self.updated}, f)
         os.replace(tmp, self.path)
-        self.log(f"Basketball Reference: {len(players)} spelers, {len(teams)} teams.")
-        return True
+
+    def status(self):
+        return {"updated": self.updated, "source": self.source, "error": self.error,
+                "players": len(self.players), "teams": len(self.teams)}
 
     def player(self, name, team=None):
         return self.players.get(norm_name(name))
@@ -219,3 +271,19 @@ def opponent_factors(teams, own, opp):
     # samenvattend: gemiddelde factor over de tellende categorieën (TO telt omgekeerd)
     f["_ease"] = round(sum(f[k] for k in ("0", "6", "3", "2", "1", "17")) / 6, 3)
     return f
+
+
+if __name__ == "__main__":
+    # Snapshot maken (GitHub Action): python -m ffd.bbref [seizoen] [uitvoerbestand]
+    import datetime as _dt
+    import sys
+    today = _dt.date.today()
+    season = int(sys.argv[1]) if len(sys.argv) > 1 else (today.year + 1 if today.month >= 9 else today.year)
+    out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(SNAPSHOT_DIR, f"bbref_{season}.json")
+    d = scrape(season)
+    if len(d["players"]) < 100 or len(d["teams"]) < 30:
+        sys.exit(f"onvolledige data: {len(d['players'])} spelers, {len(d['teams'])} teams")
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(d, f, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    print(f"{out}: {len(d['players'])} spelers, {len(d['teams'])} teams")

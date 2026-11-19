@@ -548,7 +548,7 @@ class Engine:
                 if p["id"] in theirs:
                     q["oppTeam"], q["oppSlot"] = True, theirs[p["id"]]
                 out_players[p["id"]] = q
-            meta = dict(self.meta, bbref=self.bbref.updated, team=self.fantasy_teams.get(tid),
+            meta = dict(self.meta, bbref=self.bbref.updated, bbrefStatus=self.bbref.status(), team=self.fantasy_teams.get(tid),
                         opponent=self.fantasy_teams.get(opp_id) if opp_id else None, teamId=tid)
             return {"status": "ok", "generated": now_iso(), "meta": meta,
                     "roster": [r["id"] for r in roster], "oppRoster": [r["id"] for r in opp_roster],

@@ -211,6 +211,11 @@ function easeChip(e, txt) {
   return `<span class="chip ${cls}" data-tip="Tegenstanderfactor ${sg((e - 1) * 100, 1)}% voor tellende categorieën (tempo + wat deze defensie weggeeft, Basketball Reference)"><span class="dot"></span>${txt || word}</span>`;
 }
 const easeCls = e => !num(e) ? "" : e >= 1.04 ? "z4" : e >= 1.015 ? "z3" : e <= 0.96 ? "z0" : e <= 0.985 ? "z1" : "z2";
+function bbrefNote() {
+  const b = S.state.meta.bbrefStatus || {};
+  if (b.players) return `Advanced stats: Basketball Reference${b.source && b.source !== "basketball-reference.com" ? " via " + esc(b.source) : ""}, stand ${ago(b.updated)}.${b.error ? ` <span data-tip="${esc(b.error)}">(direct ophalen mislukte)</span>` : ""}`;
+  return `<span class="down">Advanced stats nog niet beschikbaar${b.error ? ": " + esc(b.error) : " (worden geladen)"}.</span>`;
+}
 const bbrefLink = id => id ? `https://www.basketball-reference.com/players/${id[0]}/${id}.html` : null;
 const leftN = p => (p.left || []).length;
 
@@ -492,7 +497,7 @@ function viewSquad() {
     <div class="panel-b" style="padding-top:0"><div class="controls"><span class="small muted">Categorieën in de waarde:</span>${puntSeg()}</div></div>
     <div class="scroll"><table class="t"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
   </div>
-  <footer class="foot">Waarde = som van de z-scores per categorie t.o.v. de rosterbare spelers in de league (percentages gewogen naar pogingen, TO omgekeerd). Kleur per cel: <span class="zc z4">sterk</span> <span class="zc z3">goed</span> <span class="zc z2">gemiddeld</span> <span class="zc z1">zwak</span> <span class="zc z0">zeer zwak</span>. Attributen 1-20 volgen dezelfde z-scores (10-11 = gemiddelde rosterbare speler). Klik op een categorie om hem te punten.</footer>`;
+  <footer class="foot">Waarde = som van de z-scores per categorie t.o.v. de rosterbare spelers in de league (percentages gewogen naar pogingen, TO omgekeerd). Kleur per cel: <span class="zc z4">sterk</span> <span class="zc z3">goed</span> <span class="zc z2">gemiddeld</span> <span class="zc z1">zwak</span> <span class="zc z0">zeer zwak</span>. Attributen 1-20 volgen dezelfde z-scores (10-11 = gemiddelde rosterbare speler). Klik op een categorie om hem te punten.${mode === "advanced" ? " " + bbrefNote() : ""}</footer>`;
 }
 
 /* ================= SPELER ================= */
@@ -531,7 +536,7 @@ function plProfile(d) {
       <div class="panel"><div class="panel-h"><h2>Waarde per wedstrijd</h2><span class="sub">som van de z-scores · laatste ${Math.min(30, d.form.length)} wedstrijden</span></div><div class="panel-b">${gameChart(d.form)}</div></div>
       <div class="panel"><div class="panel-h"><h2>Gemiddelden per periode</h2><span class="sub">per wedstrijd</span></div><div class="scroll">${tbl}</div></div>
       <div class="panel"><div class="panel-h"><h2>Advanced</h2>${d.adv && d.adv.bbrefId ? `<a class="small" href="${esc(bbrefLink(d.adv.bbrefId))}" target="_blank" rel="noopener">Basketball Reference →</a>` : `<span class="sub">Basketball Reference</span>`}</div>
-        <div class="panel-b">${d.adv ? `<div class="statgrid">${ADV.map(([k, l, t, f]) => `<div class="stat" data-tip="${esc(t)}"><div class="l">${l}</div><div class="v">${f(d.adv[k])}</div>${k === "bpm" ? `<div class="c">O ${sg(d.adv.obpm)} · D ${sg(d.adv.dbpm)}</div>` : k === "ts_pct" ? `<div class="c">3PAr ${f2(d.adv.fg3a_per_fga_pct)} · FTr ${f2(d.adv.fta_per_fga_pct)}</div>` : ""}</div>`).join("")}</div>` : `<div class="muted">Geen Basketball Reference-data (nog niet gespeeld dit seizoen of nog niet geladen).</div>`}</div></div>
+        <div class="panel-b">${d.adv ? `<div class="statgrid">${ADV.map(([k, l, t, f]) => `<div class="stat" data-tip="${esc(t)}"><div class="l">${l}</div><div class="v">${f(d.adv[k])}</div>${k === "bpm" ? `<div class="c">O ${sg(d.adv.obpm)} · D ${sg(d.adv.dbpm)}</div>` : k === "ts_pct" ? `<div class="c">3PAr ${f2(d.adv.fg3a_per_fga_pct)} · FTr ${f2(d.adv.fta_per_fga_pct)}</div>` : ""}</div>`).join("")}</div>` : `<div class="muted">${(S.state.meta.bbrefStatus || {}).players ? "Geen Basketball Reference-data voor deze speler (nog niet gespeeld dit seizoen)." : bbrefNote()}</div>`}</div></div>
       ${d.outlook ? `<div class="panel"><div class="panel-h"><h2>ESPN-outlook</h2></div><div class="panel-b"><p class="outlook">${esc(d.outlook)}</p></div></div>` : ""}
     </div></div>`;
 }
@@ -665,7 +670,7 @@ function viewMarket(args) {
     <div class="scroll"><table class="t"><thead><tr>${cols.map(c => `<th class="sortable ${c.n ? "n" : c.c ? "c" : ""} ${c.k === sortKey ? "sorted" + (asc ? " asc" : "") : ""}" data-k="${c.k}" ${c.tip ? `data-tip="${esc(c.tip)}"` : ""}>${esc(c.l)}</th>`).join("")}</tr></thead>
     <tbody>${rows.slice(0, 250).map(p => `<tr class="click ${p.mine ? "mine" : ""}" data-go="#/speler/${p.id}">${cols.map(c => `<td class="${c.n ? "n" : c.c ? "c" : ""}">${c.f(p)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${cols.length}" class="empty">Geen spelers.</td></tr>`}</tbody></table></div>
   </div>
-  <footer class="foot">Stats per wedstrijd in de gekozen periode. Waarde = som van de z-scores (zonder gepunte categorieën). "Wedstr." = wedstrijden te gaan in deze matchup / in de volgende: in H2H-categorieën telt elke extra wedstrijd. Klik op een kolomkop om te sorteren. Advanced: Basketball Reference (seizoen).</footer>`;
+  <footer class="foot">Stats per wedstrijd in de gekozen periode. Waarde = som van de z-scores (zonder gepunte categorieën). "Wedstr." = wedstrijden te gaan in deze matchup / in de volgende: in H2H-categorieën telt elke extra wedstrijd. Klik op een kolomkop om te sorteren. ${bbrefNote()}</footer>`;
 }
 
 /* ================= CATEGORIEËN ================= */
