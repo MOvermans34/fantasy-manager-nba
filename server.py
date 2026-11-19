@@ -35,7 +35,7 @@ mimetypes.add_type("text/javascript", ".js")
 ENV_MAP = {  # omgevingsvariabele -> config-sleutel
     "LEAGUE_ID": "league_id", "TEAM_ID": "team_id", "SEASON": "season",
     "ESPN_S2": "espn_s2", "ESPN_SWID": "swid", "ACCESS_CODE": "access_code",
-    "DATABASE_URL": "database_url",
+    "DATABASE_URL": "database_url", "BBREF": "bbref",
 }
 
 

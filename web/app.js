@@ -195,6 +195,23 @@ function ownerLabel(p) {
   return p.status === "WAIVERS" ? "<span class='up'>Waivers</span>" : "<span class='up'>Vrij</span>";
 }
 const isFree = p => !p.mine && !p.oppTeam && !p.onTeamId;
+/* Basketball Reference */
+const ADV = [
+  ["usg_pct", "USG%", "Usage: aandeel teambezit dat bij hem eindigt", v => f1(v)], ["ts_pct", "TS%", "True shooting % (incl. 3P en FT)", v => num(v) ? (v * 100).toFixed(1) : "–"],
+  ["per", "PER", "Player Efficiency Rating (15 = gemiddeld)", v => f1(v)], ["bpm", "BPM", "Box Plus/Minus per 100 bezit t.o.v. gemiddelde", v => sg(v)],
+  ["vorp", "VORP", "Value Over Replacement Player (seizoen)", v => f1(v)], ["ws_per_48", "WS/48", "Win Shares per 48 minuten (.100 = gemiddeld)", v => num(v) ? v.toFixed(3).replace(/^0/, "") : "–"],
+  ["ast_pct", "AST%", "Aandeel van teamgenoten-velddoelpunten dat hij assisteert", v => f1(v)], ["trb_pct", "REB%", "Aandeel beschikbare rebounds", v => f1(v)],
+  ["stl_pct", "STL%", "Steals per 100 bezit van de tegenstander", v => f1(v)], ["blk_pct", "BLK%", "Aandeel geblokte tweepunters van de tegenstander", v => f1(v)],
+  ["tov_pct", "TOV%", "Turnovers per 100 eigen balbezit", v => f1(v)],
+];
+function easeChip(e, txt) {
+  if (!num(e)) return txt ? `<span class="muted">${txt}</span>` : "";
+  const cls = e >= 1.03 ? "pos" : e <= 0.97 ? "neg" : "mid";
+  const word = e >= 1.03 ? "Gunstig" : e <= 0.97 ? "Lastig" : "Neutraal";
+  return `<span class="chip ${cls}" data-tip="Tegenstanderfactor ${sg((e - 1) * 100, 1)}% voor tellende categorieën (tempo + wat deze defensie weggeeft, Basketball Reference)"><span class="dot"></span>${txt || word}</span>`;
+}
+const easeCls = e => !num(e) ? "" : e >= 1.04 ? "z4" : e >= 1.015 ? "z3" : e <= 0.96 ? "z0" : e <= 0.985 ? "z1" : "z2";
+const bbrefLink = id => id ? `https://www.basketball-reference.com/players/${id[0]}/${id}.html` : null;
 const leftN = p => (p.left || []).length;
 
 /* ---------------- grafieken (SVG) ---------------- */
@@ -451,6 +468,10 @@ function viewSquad() {
     head = `<th>Slot</th><th>Speler</th><th class="c">Kwal.</th>${cats.map(c => `<th class="c" data-tip="${esc(c.name)}">${esc(c.abbr)}</th>`).join("")}<th class="c" data-tip="Speeltijd">MIN</th>`;
     row = p => `<td><span class="slot">${esc(p.slot)}</span></td><td><div class="pn">${esc(p.name)}</div><div class="pm">${esc(p.pos)} · ${esc(p.team)}</div></td>
       <td class="c">${attr(quality(p))}</td>${cats.map(c => `<td class="c">${attr((p.attrs || {})[c.id])}</td>`).join("")}<td class="c">${attr((p.attrs || {}).MIN)}</td>`;
+  } else if (mode === "advanced") {
+    head = `<th>Slot</th><th>Speler</th>${ADV.map(([k, l, t]) => `<th class="n" data-tip="${esc(t)}">${l}</th>`).join("")}`;
+    row = p => `<td><span class="slot">${esc(p.slot)}</span></td><td><div class="pn">${esc(p.name)}</div><div class="pm">${esc(p.pos)} · ${esc(p.team)}</div></td>
+      ${ADV.map(([k, , , f]) => `<td class="n">${p.adv ? f(p.adv[k]) : "–"}</td>`).join("")}`;
   } else {
     const ws = ["season", "l7", "l15", "l30", "ros", "last"];
     head = `<th>Slot</th><th>Speler</th>${ws.map(x => `<th class="c">${WIN_L[x]}</th>`).join("")}<th data-tip="L15 t.o.v. seizoen">Trend</th><th class="n">GP</th>`;
@@ -466,7 +487,7 @@ function viewSquad() {
   }).join("");
   return `<div class="panel">
     <div class="panel-h"><h2>Selectie</h2>
-      <div class="seg">${[["overzicht", "Overzicht"], ["attributen", "Attributen"], ["periodes", "Waarde per periode"]].map(([k, l]) => `<button data-mode="${k}" aria-pressed="${mode === k}">${l}</button>`).join("")}</div>
+      <div class="seg">${[["overzicht", "Overzicht"], ["attributen", "Attributen"], ["periodes", "Waarde per periode"], ["advanced", "Advanced"]].map(([k, l]) => `<button data-mode="${k}" aria-pressed="${mode === k}">${l}</button>`).join("")}</div>
       ${mode === "overzicht" ? winSeg() : ""}</div>
     <div class="panel-b" style="padding-top:0"><div class="controls"><span class="small muted">Categorieën in de waarde:</span>${puntSeg()}</div></div>
     <div class="scroll"><table class="t"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
@@ -509,6 +530,8 @@ function plProfile(d) {
     <div class="stack">
       <div class="panel"><div class="panel-h"><h2>Waarde per wedstrijd</h2><span class="sub">som van de z-scores · laatste ${Math.min(30, d.form.length)} wedstrijden</span></div><div class="panel-b">${gameChart(d.form)}</div></div>
       <div class="panel"><div class="panel-h"><h2>Gemiddelden per periode</h2><span class="sub">per wedstrijd</span></div><div class="scroll">${tbl}</div></div>
+      <div class="panel"><div class="panel-h"><h2>Advanced</h2>${d.adv && d.adv.bbrefId ? `<a class="small" href="${esc(bbrefLink(d.adv.bbrefId))}" target="_blank" rel="noopener">Basketball Reference →</a>` : `<span class="sub">Basketball Reference</span>`}</div>
+        <div class="panel-b">${d.adv ? `<div class="statgrid">${ADV.map(([k, l, t, f]) => `<div class="stat" data-tip="${esc(t)}"><div class="l">${l}</div><div class="v">${f(d.adv[k])}</div>${k === "bpm" ? `<div class="c">O ${sg(d.adv.obpm)} · D ${sg(d.adv.dbpm)}</div>` : k === "ts_pct" ? `<div class="c">3PAr ${f2(d.adv.fg3a_per_fga_pct)} · FTr ${f2(d.adv.fta_per_fga_pct)}</div>` : ""}</div>`).join("")}</div>` : `<div class="muted">Geen Basketball Reference-data (nog niet gespeeld dit seizoen of nog niet geladen).</div>`}</div></div>
       ${d.outlook ? `<div class="panel"><div class="panel-h"><h2>ESPN-outlook</h2></div><div class="panel-b"><p class="outlook">${esc(d.outlook)}</p></div></div>` : ""}
     </div></div>`;
 }
@@ -523,9 +546,14 @@ function logCells(d, x) {
   return [i("40"), i("0"), i("6"), i("3"), i("2"), i("1"), i("17"), `${i("13")}/${i("14")}`, `${i("15")}/${i("16")}`, i("11")].map(v => `<td class="n">${v}</td>`).join("");
 }
 function plSchedule(d) {
-  return `<div class="panel"><div class="scroll"><table class="t compact"><thead><tr><th>Datum</th><th>Tegenstander</th><th>Thuis/uit</th><th></th></tr></thead><tbody>
-    ${(d.upcoming || []).map(g => `<tr><td>${dayL(g.date)} ${tm(g.date)}</td><td>${esc(g.opp)}</td><td>${g.home ? "thuis" : "uit"}</td><td>${g.inMatchup ? '<span class="chip pos"><span class="dot"></span>deze matchup</span>' : ""}</td></tr>`).join("") || `<tr><td colspan="4" class="empty">Geen wedstrijden gevonden.</td></tr>`}
-  </tbody></table></div></div>`;
+  const cats = CATS().filter(c => !c.ratio || c.id === "19");
+  const fk = c => c.id === "19" ? "13" : c.id;
+  return `<div class="panel"><div class="scroll"><table class="t compact"><thead><tr><th>Datum</th><th>Tegenstander</th><th>Thuis/uit</th><th class="n" data-tip="Tempo tegenstander (bezit per 48 min)">Tempo</th><th class="n" data-tip="Defensive rating tegenstander (punten toegestaan per 100 bezit)">DRtg</th><th>Matchup</th>${cats.map(c => `<th class="n" data-tip="Factor op ${esc(c.name)}${c.id === "19" ? " (velddoelpunten)" : ""}">${esc(c.abbr)}</th>`).join("")}<th></th></tr></thead><tbody>
+    ${(d.upcoming || []).map(g => `<tr><td>${dayL(g.date)} ${tm(g.date)}</td><td>${esc(g.opp)}</td><td>${g.home ? "thuis" : "uit"}</td><td class="n">${f1(g.pace)}</td><td class="n">${f1(g.drtg)}</td><td>${easeChip(g.ease)}</td>
+      ${cats.map(c => { const v = g.f && g.f[fk(c)]; const e = num(v) ? (c.reverse ? 2 - v : v) : null; return `<td class="n"><span class="zc ${easeCls(e)}">${num(v) ? sg((v - 1) * 100, 0) + "%" : "–"}</span></td>`; }).join("")}
+      <td>${g.inMatchup ? '<span class="chip pos"><span class="dot"></span>deze matchup</span>' : ""}</td></tr>`).join("") || `<tr><td colspan="8" class="empty">Geen wedstrijden gevonden.</td></tr>`}
+  </tbody></table></div></div>
+  <footer class="foot">Matchupfactor per categorie: hoeveel deze tegenstander per wedstrijd weggeeft t.o.v. het league-gemiddelde, gecombineerd met het tempo, gehalveerd tegen ruis en begrensd op ±15%. Bron: Basketball Reference (tempo, DRtg, opponent per game). De factoren tellen mee in de matchup-projectie.</footer>`;
 }
 function newsList(items, showPlayers) {
   if (!items.length) return `<div class="empty">Geen nieuws gevonden.</div>`;
@@ -610,7 +638,9 @@ function viewMarket(args) {
     { k: "value", l: "Waarde", c: 1, v: p => value(p, w), f: p => valChip(value(p, w)) },
     { k: "gp", l: "GP", n: 1, v: p => gp(p, w), f: p => gp(p, w) ?? "–" },
     { k: "min", l: "MIN", n: 1, v: p => (pg(p, w) || {})["40"], f: p => f1((pg(p, w) || {})["40"]) },
-    ...cats.map(c => ({ k: "c" + c.id, l: c.abbr, n: 1, tip: c.name + (S.ui.punt.has(c.id) ? " (gepunt)" : ""), v: p => ((p.z || {})[w] || {})[c.id], f: p => zCell(((p.z || {})[w] || {})[c.id], fmtCat(c.id, catVal(pg(p, w), c.id))) })),
+    ...(S.ui.mktView === "adv"
+      ? ADV.map(([k, l, t, f]) => ({ k: "a" + k, l, n: 1, tip: t, v: p => p.adv ? p.adv[k] : null, f: p => p.adv ? f(p.adv[k]) : "–" }))
+      : cats.map(c => ({ k: "c" + c.id, l: c.abbr, n: 1, tip: c.name + (S.ui.punt.has(c.id) ? " (gepunt)" : ""), v: p => ((p.z || {})[w] || {})[c.id], f: p => zCell(((p.z || {})[w] || {})[c.id], fmtCat(c.id, catVal(pg(p, w), c.id))) }))),
     { k: "owned", l: "% eig.", n: 1, v: p => p.owned, f: p => `${f0(p.owned)}${num(p.ownedChange) && Math.abs(p.ownedChange) >= .5 ? ` <span class="${p.ownedChange > 0 ? "up" : "down"} small">${sg(p.ownedChange)}</span>` : ""}` },
     { k: "owner", l: "Status", v: p => p.mine ? 0 : isFree(p) ? 1 : 2, f: ownerLabel },
   ];
@@ -623,6 +653,7 @@ function viewMarket(args) {
   after(root => {
     $$("[data-pos]", root).forEach(b => b.onclick = () => { location.hash = "#/markt/" + encodeURIComponent(b.dataset.pos); });
     $$("[data-filt]", root).forEach(b => b.onclick = () => { S.ui.mktFilt = b.dataset.filt; render(); });
+    $$("[data-mview]", root).forEach(b => b.onclick = () => { S.ui.mktView = b.dataset.mview; render(); });
     const s = $("#mktQ", root); if (s) { s.oninput = () => { S.ui.mktQ = s.value; render(); const n = $("#mktQ"); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }; }
     $$("th[data-k]", root).forEach(th => th.onclick = () => { if (S.ui.mktSort === th.dataset.k) S.ui.mktAsc = !S.ui.mktAsc; else { S.ui.mktSort = th.dataset.k; S.ui.mktAsc = ["name", "rank", "owner"].includes(th.dataset.k) || th.dataset.k === "c11"; } render(); });
   });
@@ -630,11 +661,11 @@ function viewMarket(args) {
     <div class="panel-h"><div class="seg">${POSITIONS.map(x => `<button data-pos="${x}" aria-pressed="${x === pos}">${x}</button>`).join("")}</div>
       <div class="controls"><div class="seg">${[["all", "Alle"], ["free", "Vrij & waivers"], ["mine", "Mijn spelers"]].map(([k, l]) => `<button data-filt="${k}" aria-pressed="${filt === k}">${l}</button>`).join("")}</div>
       <input type="search" id="mktQ" placeholder="Zoek speler of team…" value="${esc(S.ui.mktQ || "")}" aria-label="Zoek"><span class="muted small">${rows.length} spelers</span></div></div>
-    <div class="panel-b" style="padding-top:0"><div class="controls">${winSeg()}<span class="small muted">Punt:</span>${puntSeg()}</div></div>
+    <div class="panel-b" style="padding-top:0"><div class="controls"><div class="seg">${[["cats", "Categorieën"], ["adv", "Advanced"]].map(([k, l]) => `<button data-mview="${k}" aria-pressed="${(S.ui.mktView || "cats") === k}">${l}</button>`).join("")}</div>${winSeg()}<span class="small muted">Punt:</span>${puntSeg()}</div></div>
     <div class="scroll"><table class="t"><thead><tr>${cols.map(c => `<th class="sortable ${c.n ? "n" : c.c ? "c" : ""} ${c.k === sortKey ? "sorted" + (asc ? " asc" : "") : ""}" data-k="${c.k}" ${c.tip ? `data-tip="${esc(c.tip)}"` : ""}>${esc(c.l)}</th>`).join("")}</tr></thead>
     <tbody>${rows.slice(0, 250).map(p => `<tr class="click ${p.mine ? "mine" : ""}" data-go="#/speler/${p.id}">${cols.map(c => `<td class="${c.n ? "n" : c.c ? "c" : ""}">${c.f(p)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${cols.length}" class="empty">Geen spelers.</td></tr>`}</tbody></table></div>
   </div>
-  <footer class="foot">Stats per wedstrijd in de gekozen periode. Waarde = som van de z-scores (zonder gepunte categorieën). "Wedstr." = wedstrijden te gaan in deze matchup / in de volgende: in H2H-categorieën telt elke extra wedstrijd. Klik op een kolomkop om te sorteren.</footer>`;
+  <footer class="foot">Stats per wedstrijd in de gekozen periode. Waarde = som van de z-scores (zonder gepunte categorieën). "Wedstr." = wedstrijden te gaan in deze matchup / in de volgende: in H2H-categorieën telt elke extra wedstrijd. Klik op een kolomkop om te sorteren. Advanced: Basketball Reference (seizoen).</footer>`;
 }
 
 /* ================= CATEGORIEËN ================= */
@@ -694,8 +725,8 @@ async function viewSchedule() {
   });
   const head = d.days.map(x => `<th class="c ${x.sp === d.sp ? "today" : ""} ${x.next ? "nextwk" : ""}" data-tip="${esc(x.date)} · ${x.games} wedstrijden">${esc(x.dow)}<div class="pm">${x.date ? +x.date.slice(8) : ""}</div></th>`).join("");
   const rows = d.teams.map(t => `<tr class="${mine[t.abbrev] ? "mine" : ""}"><td><span class="pn">${esc(t.abbrev)}</span>${mine[t.abbrev] ? ` <span class="chip pos" data-tip="${esc(mine[t.abbrev].map(p => p.name).join(", "))}"><span class="dot"></span>${mine[t.abbrev].length}</span>` : ""}${opp[t.abbrev] ? ` <span class="chip neg" data-tip="${esc("Tegenstander: " + opp[t.abbrev].map(p => p.name).join(", "))}"><span class="dot"></span>${opp[t.abbrev].length}</span>` : ""}</td>
-    ${d.days.map(x => { const g = t.games[x.sp]; return `<td class="c small ${x.sp === d.sp ? "today" : ""} ${x.next ? "nextwk" : ""} ${x.past ? "muted" : ""}">${g ? (g.home ? "" : "@") + esc(g.opp) : ""}</td>`; }).join("")}
-    <td class="n big">${t.left}</td><td class="n muted">${t.total}</td><td class="n">${t.next}</td></tr>`).join("");
+    ${d.days.map(x => { const g = t.games[x.sp]; return `<td class="c small ${x.sp === d.sp ? "today" : ""} ${x.next ? "nextwk" : ""} ${x.past ? "muted" : ""}">${g ? `<span class="zc ${x.past ? "" : easeCls(g.ease)}" ${num(g.ease) ? `data-tip="${esc(`${t.abbrev} ${g.home ? "vs" : "@"} ${g.opp}: tegenstanderfactor ${sg((g.ease - 1) * 100, 1)}%`)}"` : ""}>${(g.home ? "" : "@") + esc(g.opp)}</span>` : ""}</td>`; }).join("")}
+    <td class="n big">${t.left}</td><td class="n muted">${t.total}</td><td class="n">${t.next}</td><td class="n">${f1(t.pace)}</td><td class="n">${f1(t.drtg)}</td><td>${easeChip(t.ease, num(t.ease) ? sg((t.ease - 1) * 100, 1) + "%" : "")}</td></tr>`).join("");
   return `<div class="stack">
     <div class="panel"><div class="panel-h"><h2>Jouw spelers per dag</h2><span class="sub">${slots} basisplaatsen · meer spelers dan plaatsen = wedstrijden die niet tellen</span></div>
       <div class="scroll"><table class="t compact"><thead><tr><th></th>${head}</tr></thead><tbody>
@@ -704,8 +735,8 @@ async function viewSchedule() {
       <tr><td class="muted">NBA-wedstrijden</td>${d.days.map(x => `<td class="c muted ${x.next ? "nextwk" : ""}">${x.games}</td>`).join("")}</tr>
       </tbody></table></div></div>
     <div class="panel"><div class="panel-h"><h2>NBA-schema</h2><span class="sub">deze matchup en de volgende (grijze achtergrond) · gesorteerd op wedstrijden te gaan</span></div>
-      <div class="scroll"><table class="t compact sched"><thead><tr><th>Team</th>${head}<th class="n" data-tip="Wedstrijden te gaan deze matchup">Te gaan</th><th class="n">Totaal</th><th class="n" data-tip="Wedstrijden volgende matchup">Volgende</th></tr></thead><tbody>${rows}</tbody></table></div></div>
-    <footer class="foot">@ = uitwedstrijd. Teams met veel wedstrijden in de rest van de matchup zijn goud voor streamers; op dagen met weinig NBA-wedstrijden (zie onderste rij) krijg je je spelers makkelijker kwijt in de basis.</footer>
+      <div class="scroll"><table class="t compact sched"><thead><tr><th>Team</th>${head}<th class="n" data-tip="Wedstrijden te gaan deze matchup">Te gaan</th><th class="n">Totaal</th><th class="n" data-tip="Wedstrijden volgende matchup">Volgende</th><th class="n" data-tip="Eigen tempo (Basketball Reference)">Tempo</th><th class="n" data-tip="Eigen defensive rating">DRtg</th><th data-tip="Gemiddelde tegenstanderfactor van de resterende wedstrijden deze matchup">Matchups</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+    <footer class="foot">@ = uitwedstrijd. Kleur per wedstrijd: <span class="zc z4">gunstig</span> <span class="zc z3">licht gunstig</span> <span class="zc z1">licht lastig</span> <span class="zc z0">lastig</span> voor fantasy-productie, op basis van tempo en wat de tegenstander per wedstrijd weggeeft (Basketball Reference${d.bbref ? ", " + ago(d.bbref) : ""}). Teams met veel wedstrijden in de rest van de matchup zijn goud voor streamers; op dagen met weinig NBA-wedstrijden (zie onderste rij) krijg je je spelers makkelijker kwijt in de basis.</footer>
   </div>`;
 }
 

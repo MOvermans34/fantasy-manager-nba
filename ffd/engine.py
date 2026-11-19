@@ -8,6 +8,7 @@ import threading
 import time
 import traceback
 
+from .bbref import BBRef, opponent_factors
 from .cats import INACTIVE_INJ, Projector, ValueModel, best_lineup, cat_meta, espn_current, side_totals
 from .espn import (BENCH_SLOT_IDS, RAW, SLOT, STATS, AuthError, Espn, build_player, categories, et_date,
                    game_row, parse_scoreboard)
@@ -45,6 +46,8 @@ class Engine:
             import os
             os.makedirs(data_dir, exist_ok=True)
             self.news = NewsStore(json_path)
+        self.bbref = BBRef(self.season, data_dir, log=log)
+        self._fac = {}
         self.lock = threading.RLock()
         self.heavy = threading.Lock()
         self.players = {}
@@ -359,7 +362,37 @@ class Engine:
 
     def _projector(self):
         return Projector(self.cats, self.players, self.pro, self.slot_counts, self.sp,
-                         self.meta.get("sps") or [self.sp], self.games)
+                         self.meta.get("sps") or [self.sp], self.games, factor=self._factor)
+
+    # ------------------------------------------------------------------
+    # Basketball Reference
+    # ------------------------------------------------------------------
+    def _abbr(self, pro_id):
+        return self.pro.get(pro_id, {}).get("abbrev")
+
+    def _factor_teams(self, own, opp):
+        key = (own, opp)
+        if key not in self._fac:
+            self._fac[key] = opponent_factors(self.bbref.teams, own, opp) if self.bbref.teams else None
+        return self._fac[key]
+
+    def _factor(self, p, g):
+        return self._factor_teams(p.get("team"), self._abbr(g["opp"]))
+
+    def refresh_bbref(self, force=False):
+        if self.bbref.refresh(force=force) or not self._fac:
+            with self.lock:
+                self._fac = {}
+                if self.players and self.live_updated:
+                    self._project_all()
+
+    def _adv(self, p):
+        b = self.bbref.player(p.get("name") or "") if self.bbref.players else None
+        if not b:
+            return None
+        return {k: b.get(k) for k in ("per", "ts_pct", "usg_pct", "ast_pct", "trb_pct", "stl_pct", "blk_pct",
+                                      "tov_pct", "obpm", "dbpm", "bpm", "vorp", "ws_per_48", "fg3a_per_fga_pct",
+                                      "fta_per_fga_pct", "bbrefId")}
 
     def _project_all(self):
         pj = self._projector()
@@ -488,6 +521,7 @@ class Engine:
         out["next"] = len(self._games_left(p, self.meta.get("nextSps") or []))
         out["today"] = self._today(p)
         out["eligSlots"] = [SLOT[s] for s in p.get("eligSlots", []) if s in SLOT and s not in BENCH_SLOT_IDS]
+        out["adv"] = self._adv(p)
         return out
 
     def teams_out(self):
@@ -514,7 +548,7 @@ class Engine:
                 if p["id"] in theirs:
                     q["oppTeam"], q["oppSlot"] = True, theirs[p["id"]]
                 out_players[p["id"]] = q
-            meta = dict(self.meta, team=self.fantasy_teams.get(tid),
+            meta = dict(self.meta, bbref=self.bbref.updated, team=self.fantasy_teams.get(tid),
                         opponent=self.fantasy_teams.get(opp_id) if opp_id else None, teamId=tid)
             return {"status": "ok", "generated": now_iso(), "meta": meta,
                     "roster": [r["id"] for r in roster], "oppRoster": [r["id"] for r in opp_roster],
@@ -625,8 +659,13 @@ class Engine:
             upcoming = []
             for s in sorted(k for k in team.get("games", {}) if k >= self.sp)[:12]:
                 g = team["games"][s]
-                upcoming.append({"sp": s, "date": g["date"], "opp": self.pro.get(g["opp"], {}).get("abbrev"),
-                                 "home": g["home"], "inMatchup": s in (self.meta.get("sps") or [])})
+                opp = self._abbr(g["opp"])
+                fac = self._factor_teams(p.get("team"), opp) or {}
+                bt = self.bbref.teams.get(opp) or {}
+                upcoming.append({"sp": s, "date": g["date"], "opp": opp,
+                                 "home": g["home"], "inMatchup": s in (self.meta.get("sps") or []),
+                                 "ease": fac.get("_ease"), "pace": bt.get("pace"), "drtg": bt.get("drtg"),
+                                 "f": {k: v for k, v in fac.items() if not k.startswith("_")} or None})
             out["upcoming"] = upcoming
             # directe concurrenten (zelfde positie, rond dezelfde waarde)
             grp = sorted([x for x in self.players.values() if x["pos"] == p["pos"]],
@@ -653,13 +692,20 @@ class Engine:
                 for s in sps + nxt:
                     g = t["games"].get(s)
                     if g:
-                        row["games"][s] = {"opp": self.pro.get(g["opp"], {}).get("abbrev"), "home": g["home"]}
+                        opp = self._abbr(g["opp"])
+                        fac = self._factor_teams(t["abbrev"], opp) or {}
+                        row["games"][s] = {"opp": opp, "home": g["home"], "ease": fac.get("_ease")}
                 row["left"] = sum(1 for s in sps if s >= self.sp and s in t["games"])
                 row["total"] = sum(1 for s in sps if s in t["games"])
                 row["next"] = sum(1 for s in nxt if s in t["games"])
+                bt = self.bbref.teams.get(t["abbrev"]) or {}
+                row.update({"pace": bt.get("pace"), "ortg": bt.get("ortg"), "drtg": bt.get("drtg"),
+                            "record": f'{int(bt["wins"])}-{int(bt["losses"])}' if bt.get("wins") is not None else None})
+                eases = [g["ease"] for s, g in row["games"].items() if s in sps and s >= self.sp and g.get("ease")]
+                row["ease"] = round(sum(eases) / len(eases), 3) if eases else None
                 teams.append(row)
             return {"days": days, "teams": sorted(teams, key=lambda r: (-r["left"], -r["next"], r["abbrev"])),
-                    "sp": self.sp}
+                    "sp": self.sp, "bbref": self.bbref.updated}
 
     def news_out(self, tid):
         with self.lock:
@@ -696,6 +742,19 @@ class Engine:
         self._news_thread = threading.Thread(target=lambda: self._safe("Nieuws", self.refresh_news), daemon=True)
         self._news_thread.start()
 
+    def _bbref_async(self):
+        if self.cfg.get("bbref", True) in (False, "0", "false"):
+            return
+        if getattr(self, "_bbref_thread", None) and self._bbref_thread.is_alive():
+            return
+        def run():
+            try:
+                self.refresh_bbref()
+            except Exception as e:  # optionele bron: alleen in de log, de app werkt zonder
+                self._err("Basketball Reference", e, "warn")
+        self._bbref_thread = threading.Thread(target=run, daemon=True)
+        self._bbref_thread.start()
+
     def _loop(self):
         while not self.players:
             self._safe("ESPN", self.refresh_fantasy)
@@ -703,8 +762,9 @@ class Engine:
                 time.sleep(30)
         self._safe("Live", self.refresh_live)
         self._news_async()
+        self._bbref_async()
         iv = self.cfg.get("intervals", {})
-        t = {k: time.time() for k in ("fantasy", "news", "live")}
+        t = {k: time.time() for k in ("fantasy", "news", "live", "bbref")}
         live_fast = self.any_live
         while True:
             time.sleep(5)
@@ -715,6 +775,9 @@ class Engine:
             if now - t["news"] >= iv.get("news_seconds", 300):
                 t["news"] = now
                 self._news_async()
+            if now - t["bbref"] >= 3600:  # de cache zelf ververst hooguit eens per 12 uur
+                t["bbref"] = now
+                self._bbref_async()
             if now - t["fantasy"] >= iv.get("fantasy_seconds", 900):
                 t["fantasy"] = now
                 self._safe("ESPN", self.refresh_fantasy)

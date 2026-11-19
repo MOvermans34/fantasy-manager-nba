@@ -186,8 +186,10 @@ def side_totals(totals, cats):
 
 
 class Projector:
-    def __init__(self, cats, players, pro, slot_counts, sp, sps, live_games):
-        """sps: alle speeldagen van de huidige matchup; live_games: game-id -> status van vandaag."""
+    def __init__(self, cats, players, pro, slot_counts, sp, sps, live_games, factor=None):
+        """sps: alle speeldagen van de huidige matchup; live_games: game-id -> status van vandaag.
+        factor(speler, wedstrijd) -> {stat-id: vermenigvuldiger} voor de tegenstander (of None)."""
+        self.factor = factor
         self.cats, self.players, self.pro = cats, players, pro
         self.slot_counts = slot_counts
         self.sp, self.sps = sp, sps
@@ -241,8 +243,9 @@ class Projector:
                 if p.get("injury") == "DAY_TO_DAY":
                     left *= 0.8
                 remaining += left
+                fac = (self.factor(p, g) if self.factor and g else None) or {}
                 for k in self.need:
-                    m = p["ppg"].get(k, 0) * left
+                    m = p["ppg"].get(k, 0) * left * fac.get(k, 1.0)
                     rem[k] += m
                     var[k] += max(m, 0.15 * left) * 1.5
         return cur_tot, rem, var, played, round(remaining, 1)

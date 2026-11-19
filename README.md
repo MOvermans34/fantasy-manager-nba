@@ -11,11 +11,11 @@ Het is de NBA-versie van [fantasy-manager](https://github.com/MOvermans34/fantas
 | **League** | Alle matchups van deze periode met de categoriestand (bijv. 5-3-1), de verwachte eindstand, de winkans en per categorie een gekleurd label. Ook de stand (W-V-G). Klik op een team om de app als dat team te bekijken. |
 | **Overzicht** | De categoriestand tegen je tegenstander. Per categorie zie je: nu, verwacht aan het eind van de week, winkans en een label (veilig, swing, verloren). Verder het aantal wedstrijden dat jij en je tegenstander nog hebben, een **inbox** (blessures, starters zonder wedstrijd terwijl er een bankspeler speelt, swing-categorieën, streamers en waiver-tips, nieuws) en je opstelling van vandaag. |
 | **Selectie** | Je selectie met kwaliteit (1-20), vorm (laatste wedstrijden), de wedstrijd van vandaag, het aantal wedstrijden deze en volgende matchup, de waarde en de stats per wedstrijd met een kleur per z-score. Er zijn drie weergaven: overzicht, attributen en waarde per periode (seizoen, L7, L15, L30, verwacht, vorig seizoen) met trend. |
-| **Spelerprofiel** | Attributen per categorie, waarde per wedstrijd (grafiek), gemiddelden per periode, ESPN-outlook, de volledige wedstrijdlog, het komende schema, nieuws en een vergelijking met directe concurrenten. |
+| **Spelerprofiel** | Attributen per categorie, waarde per wedstrijd (grafiek), gemiddelden per periode, advanced stats (Basketball Reference), ESPN-outlook, de volledige wedstrijdlog, het komende schema met per wedstrijd het tempo, de DRtg en de matchupfactor per categorie, nieuws en een vergelijking met directe concurrenten. |
 | **Wedstrijdcentrum** | De live categoriestand, de statregels van jouw spelers en die van je tegenstander vandaag, een live-ticker met statwijzigingen en de wedstrijden van vandaag. Tijdens wedstrijden ververst dit elke 30 seconden. |
-| **Spelersmarkt** | Alle spelers met hun stats per wedstrijd in de gekozen periode, gekleurd per z-score. Je kunt filteren op positie en *vrij/waivers*, sorteren op elke kolom en **categorieën punten**: de waarde rekent dan zonder die categorieën. |
+| **Spelersmarkt** | Alle spelers met hun stats per wedstrijd in de gekozen periode, gekleurd per z-score, of met de advanced stats van Basketball Reference (USG%, TS%, PER, BPM, VORP…). Je kunt filteren op positie en *vrij/waivers*, sorteren op elke kolom en **categorieën punten**: de waarde rekent dan zonder die categorieën. |
 | **Categorieën** | Een heatmap van alle teams per categorie: seizoenstotalen van ESPN en de projectie per wedstrijd. Je ziet je eigen sterke en zwakke categorieën met een punt-advies, en vrije spelers die het meest helpen in je zwakste categorieën. |
-| **Schema** | Het NBA-schema van deze en de volgende matchup per team, met het aantal wedstrijden te gaan. Per dag zie je hoeveel van je spelers er spelen t.o.v. je basisplaatsen. Op dagen met meer spelers dan plaatsen gaan wedstrijden verloren. |
+| **Schema** | Het NBA-schema van deze en de volgende matchup per team, met het aantal wedstrijden te gaan. Elke wedstrijd is gekleurd naar hoe gunstig de tegenstander is (tempo + wat die defensie weggeeft), en per team zie je tempo en DRtg. Per dag zie je hoeveel van je spelers er spelen t.o.v. je basisplaatsen. Op dagen met meer spelers dan plaatsen gaan wedstrijden verloren. |
 | **Nieuws** | ESPN-nieuws en Rotowire-spelersupdates, te filteren op bron, je eigen team, de tegenstander en per speler. |
 
 ## Hoe de analytics werken
@@ -24,6 +24,7 @@ Het is de NBA-versie van [fantasy-manager](https://github.com/MOvermans34/fantas
 - **Verwacht per wedstrijd:** een mix van seizoen, laatste 15 dagen en de ESPN-projectie, gewogen naar het aantal gespeelde wedstrijden. Vroeg in het seizoen telt vorig seizoen mee als er nog niets anders is.
 - **Attributen (1-20):** dezelfde z-scores, omgezet naar 1-20. Een 10-11 is een gemiddelde rosterbare speler en een 20 is elite in die categorie. Kwaliteit is gebaseerd op de totale waarde.
 - **Matchup-projectie:** de huidige stand van ESPN plus de verwachte productie in de resterende wedstrijden van de matchup. Per dag kiezen we de beste opstelling uit de spelers die spelen, binnen jouw basisplaatsen. Spelers met status *out* tellen niet mee en *dag-tot-dag* telt voor 80%. Voor vandaag gebruiken we je echte opstelling en alleen de nog te spelen speeltijd.
+- **Tegenstanderfactor (Basketball Reference):** per wedstrijd kijken we naar het tempo van beide teams en naar wat de tegenstander per wedstrijd weggeeft per categorie (punten, rebounds, assists, steals, blocks, driepunters, turnovers, velddoelpunten en vrije worpen), vergeleken met het league-gemiddelde. De afwijking wordt gehalveerd tegen ruis en begrensd op ±15%. Deze factor telt mee in de matchup-projectie.
 - **Winkans:** per categorie met een normale benadering van de onzekerheid (die afneemt naarmate de week vordert), en voor het totaal met 3.000 simulaties van alle categorieën samen.
 
 ## Delen met je league
@@ -94,6 +95,9 @@ Dit werkt hetzelfde als in de football-app. Met `DATABASE_URL` gaat het nieuws v
 |---|---|
 | **ESPN Fantasy API** (onofficieel) | league, categorieën, selecties, categoriestand, stats per wedstrijd en per periode, projecties, blessures, eigendom-% |
 | **ESPN NBA-scoreboard** | wedstrijdstatus, kwart en klok |
+| **Basketball Reference** | advanced stats per speler (PER, TS%, USG%, AST%, REB%, STL%, BLK%, TOV%, BPM, VORP, WS/48) en per team tempo, ORtg/DRtg en opponent per game |
 | **Nieuws** | ESPN-nieuws, Rotowire-updates via ESPN en de Rotowire-RSS-feed |
 
-De ESPN-API is onofficieel. Als ESPN daar iets aan verandert, kan een deel tijdelijk niet werken. stats.nba.com blokkeert verzoeken van cloudservers, daarom komt alles van ESPN.
+**Over Basketball Reference:** de app haalt per verversing maar twee pagina's op (`/leagues/NBA_{jaar}_advanced.html` en `/leagues/NBA_{jaar}.html`), met 6 seconden ertussen en hooguit eens per 12 uur. Het resultaat wordt op schijf bewaard. Dat valt ruim binnen de regels van de site (robots.txt vraagt 3 s tussen verzoeken, Sports Reference blokkeert boven ongeveer 20 verzoeken per minuut). Gebruik het voor je eigen league en niet voor publieke of commerciële doeleinden; zie de gebruiksvoorwaarden van Sports Reference. Uitzetten kan met `BBREF=0`. De app werkt dan gewoon zonder advanced stats en tegenstanderfactoren. Spelers worden op naam gekoppeld; wie dit seizoen nog niet heeft gespeeld, heeft (nog) geen advanced stats.
+
+De ESPN-API is onofficieel. Als ESPN daar iets aan verandert, kan een deel tijdelijk niet werken. stats.nba.com blokkeert verzoeken van cloudservers, daarom komen de basisstats van ESPN.
