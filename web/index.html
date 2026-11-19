@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fantasy Manager NBA</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1b2230">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FM NBA">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23d9622b'/><text x='16' y='22' font-size='16' font-family='sans-serif' font-weight='800' text-anchor='middle' fill='white'>FM</text></svg>">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">FM</div>
+      <div><div class="brand-name" id="brandTeam">Fantasy Manager NBA</div><div class="brand-sub" id="brandSub">laden…</div></div>
+    </div>
+    <div class="team-box">
+      <select id="teamSel" aria-label="Kies team"></select>
+      <button class="btn" id="shareBtn" type="button" title="Kopieer een directe link naar dit team">Link</button>
+    </div>
+    <nav class="nav" id="nav">
+      <a href="#/league" data-route="league"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2h8v3a4 4 0 0 1-3 3.9V11h2v3H5v-3h2V8.9A4 4 0 0 1 4 5zM2 3h1.5v2A1.5 1.5 0 0 1 2 3.5zm12 0h-1.5v2A1.5 1.5 0 0 0 14 3.5z"/></svg>League</a>
+      <div class="nav-group">Team</div>
+      <a href="#/overzicht" data-route="overzicht"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z"/></svg>Overzicht</a>
+      <a href="#/selectie" data-route="selectie"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-5 6c0-2.8 2.2-4.5 5-4.5s5 1.7 5 4.5z"/></svg>Selectie</a>
+      <a href="#/live" data-route="live"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 2.5a1 1 0 0 1 1 1V8l2.3 1.4-.8 1.3L7 8.6V4.5a1 1 0 0 1 1-1z"/></svg>Wedstrijdcentrum<span class="live-dot" id="navLive" hidden></span></a>
+      <div class="nav-group">Analyse</div>
+      <a href="#/markt" data-route="markt"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 13h2V6H2zm5 0h2V3H7zm5 0h2V8h-2z"/></svg>Spelersmarkt</a>
+      <a href="#/categorieen" data-route="categorieen"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h3v3H2zm4.5 0h3v3h-3zM11 2h3v3h-3zM2 6.5h3v3H2zm4.5 0h3v3h-3zM11 6.5h3v3h-3zM2 11h3v3H2zm4.5 0h3v3h-3zM11 11h3v3h-3z"/></svg>Categorieën</a>
+      <a href="#/schema" data-route="schema"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 1h1.5v2h5V1H12v2h2v11H2V3h2zm-.5 5v6.5h9V6z"/></svg>Schema</a>
+      <div class="nav-group">Media</div>
+      <a href="#/nieuws" data-route="nieuws"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h10v10H3a1 1 0 0 1-1-1zm11 2h1v7a1 1 0 0 1-1 1zM4 5v2h6V5zm0 4v1h6V9zm0 2v1h4v-1z"/></svg>Nieuws</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="pageTitle">Overzicht</h1>
+        <div class="crumbs" id="crumbs"></div>
+      </div>
+      <div class="spacer"></div>
+      <div class="status">
+        <span id="statusText">verbinden…</span>
+        <button class="btn" id="refreshBtn" type="button" title="Alles nu verversen">Verversen</button>
+        <button class="btn" id="themeBtn" type="button" title="Licht/donker">Thema</button>
+      </div>
+    </div>
+    <div class="content" id="view"><div class="loading">Data laden: de eerste keer duurt dit een paar seconden.</div></div>
+  </div>
+</div>
+<div id="tip" role="tooltip"></div>
+<script src="/app.js"></script>
+</body>
+</html>

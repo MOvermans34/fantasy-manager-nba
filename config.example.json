@@ -1,0 +1,16 @@
+{
+  "league_id": 123456789,
+  "team_id": 1,
+  "season": 2027,
+  "espn_s2": "PLAK-HIER-JE-ESPN_S2-COOKIE",
+  "swid": "{PLAK-HIER-JE-SWID-COOKIE-INCLUSIEF-ACCOLADES}",
+  "access_code": "KIES-EEN-CODE-VOOR-JE-LEAGUE",
+  "news_per_player": 8,
+  "pool_depth": 300,
+  "intervals": {
+    "live_seconds": 30,
+    "idle_seconds": 300,
+    "news_seconds": 300,
+    "fantasy_seconds": 900
+  }
+}

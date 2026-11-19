@@ -1,0 +1,33 @@
+# Render Blueprint voor Fantasy Manager NBA
+# Render-dashboard -> New -> Blueprint -> kies deze repo. Render vraagt dan om de
+# waarden met "sync: false" (league-ID, team-ID, je ESPN-cookies en de toegangscode).
+services:
+  - type: web
+    name: fantasy-manager-nba
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: frankfurt
+    # free: gratis, maar valt na 15 min zonder bezoek in slaap (wakker worden ~1 min).
+    # starter ($7/mnd): altijd aan, live tracking ook als niemand de app open heeft.
+    plan: free
+    healthCheckPath: /api/config
+    autoDeploy: true
+    envVars:
+      - key: LEAGUE_ID
+        sync: false
+      - key: TEAM_ID
+        sync: false
+      - key: SEASON
+        value: "2027"
+      - key: ESPN_S2
+        sync: false
+      - key: ESPN_SWID
+        sync: false
+      - key: ACCESS_CODE
+        sync: false
+      # Optioneel: nieuws via de Postgres-ETL. Zonder DATABASE_URL gebruikt de app een
+      # lokaal JSON-bestand (dat op het gratis plan bij elke herstart opnieuw begint).
+      # Gebruik een eigen database (bijv. een gratis Neon-database), niet die van de
+      # football-app: anders raakt het nieuws van beide sporten door elkaar.
+      - key: DATABASE_URL
+        sync: false
