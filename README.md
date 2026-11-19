@@ -1,4 +1,7 @@
-# Fantasy Manager NBA
+# Hit Em High Fantasy
+
+*Fantasy Manager NBA in de huisstijl van [Hit Em High, de Nederlandse NBA-podcast](https://vriendvandeshow.nl/hit-em-high-de-nederlandse-nba-podcast/word-vriend): roze, cyaan en dikke letters (Archivo Black en Manrope). Het basketbal-icoon is een eigen tekening in die kleuren, niet het officiële logo.*
+
 
 Een web-app in Football Manager-stijl voor je ESPN Fantasy Basketball-league met **H2H-categorieën**: de live categoriestand met winkans per categorie, je opstelling per dag, de waarde van elke speler (z-scores, attributen 1-20), het NBA-schema voor streamers en gebundeld nieuws. Eén server bedient de hele league en elke deelnemer kiest zijn eigen team.
 

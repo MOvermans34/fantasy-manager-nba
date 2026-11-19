@@ -1,15 +1,28 @@
 {
-  "name": "Fantasy Manager NBA",
-  "short_name": "FM NBA",
-  "description": "Live categorieën, analytics en nieuws voor je ESPN fantasy basketball league",
+  "name": "Hit Em High Fantasy",
+  "short_name": "HEH Fantasy",
+  "description": "Live categorieën, analytics en nieuws voor je ESPN fantasy basketball league, in Hit Em High-stijl",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#101317",
-  "theme_color": "#1b2230",
+  "background_color": "#f2208b",
+  "theme_color": "#f2208b",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

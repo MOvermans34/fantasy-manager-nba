@@ -1,4 +1,4 @@
-/* Fantasy Manager NBA: frontend (vanilla JS, geen build-stap) */
+/* Hit Em High Fantasy (Fantasy Manager NBA): frontend (vanilla JS, geen build-stap) */
 "use strict";
 
 const S = { state: null, live: null, news: null, cache: { player: {} }, ui: {} };
@@ -262,7 +262,7 @@ function renderChrome() {
   const s = S.state; if (!s) return;
   renderTeamSel();
   const m = s.meta, t = m.team || {};
-  $("#brandTeam").textContent = t.name || "Fantasy Manager";
+  $("#brandTeam").textContent = t.name || "Hit Em High";
   $("#brandSub").textContent = `${t.wins ?? 0}-${t.losses ?? 0}-${t.ties ?? 0} · Matchup ${m.matchupPeriod ?? "–"}${m.demo ? " · demo" : ""}`;
   const live = S.live && S.live.anyLive;
   $("#navLive").hidden = !live;
@@ -274,7 +274,7 @@ function render() {
   if (!S.state) return;
   const r = route();
   $$("#nav a").forEach(a => a.classList.toggle("active", a.dataset.route === r.name || (r.name === "speler" && a.dataset.route === "selectie")));
-  $("#pageTitle").textContent = TITLES[r.name] || "Fantasy Manager";
+  $("#pageTitle").textContent = TITLES[r.name] || "Hit Em High Fantasy";
   const m = S.state.meta;
   $("#crumbs").textContent = `${m.leagueName || ""} · Seizoen ${m.season - 1}-${String(m.season).slice(2)} · Matchup ${m.matchupPeriod ?? "–"} · ${m.date ? new Date(m.date + "T12:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" }) : ""}`;
   const view = $("#view");
@@ -808,12 +808,12 @@ function showGate(kind, msg) {
   setStatus("");
   if (kind === "code") {
     v.innerHTML = `<div class="gate panel"><div class="panel-b">
-      <div class="brand-mark" style="margin-bottom:12px">FM</div>
-      <h2 style="margin:0 0 4px">Fantasy Manager NBA</h2>
-      <p class="muted" style="margin:0 0 14px">${esc(AUTH.leagueName || "Je league")}: vul de toegangscode in die je van de beheerder hebt gekregen.</p>
+      <div class="brand-mark" style="margin-bottom:12px"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="#4de5f9" stroke="#8c1457" stroke-width="2.2"/><path d="M3.5 16h25M16 3.5v25M7.5 6.8c3.6 2.6 5.6 5.7 5.6 9.2s-2 6.6-5.6 9.2M24.5 6.8c-3.6 2.6-5.6 5.7-5.6 9.2s2 6.6 5.6 9.2" fill="none" stroke="#8c1457" stroke-width="2.2" stroke-linecap="round"/></svg></div>
+      <h2 style="margin:0 0 4px">Hit Em High Fantasy</h2>
+      <p class="muted" style="margin:0 0 14px">${esc(AUTH.leagueName || "Je league")}: vul de toegangscode in die je van de beheerder hebt gekregen. Let's go! 🎺🏀</p>
       ${msg ? `<div class="err">${esc(msg)}</div>` : ""}
       <form id="codeForm" class="controls"><input type="password" id="codeIn" placeholder="Toegangscode" autocomplete="current-password" required style="flex:1;min-width:0">
-      <button class="btn primary" type="submit">Verder</button></form></div></div>`;
+      <button class="btn primary" type="submit">Let's go</button></form></div></div>`;
     $("#codeForm").onsubmit = e => { e.preventDefault(); AUTH.code = $("#codeIn").value.trim(); store.set("fmb-code", AUTH.code); boot(); };
     setTimeout(() => $("#codeIn") && $("#codeIn").focus(), 50);
   } else {
