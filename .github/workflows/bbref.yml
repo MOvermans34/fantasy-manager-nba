@@ -1,0 +1,36 @@
+# Ververst de Basketball Reference-snapshot (snapshots/bbref_<seizoen>.json) één keer per dag.
+# De app haalt de data eerst zelf op; lukt dat niet (sommige cloudservers worden door de site
+# geblokkeerd), dan leest hij deze snapshot via raw.githubusercontent.com.
+name: Basketball Reference snapshot
+
+on:
+  schedule:
+    - cron: "17 9 * * *"   # 09:17 UTC, ruim na de laatste Amerikaanse wedstrijden
+  workflow_dispatch: {}    # handmatig starten via het tabblad Actions
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bbref-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Snapshot maken (2 pagina's, 6 s ertussen)
+        run: python -m ffd.bbref
+      - name: Committen als er iets veranderd is
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add snapshots/
+          if git diff --cached --quiet; then echo "Geen wijzigingen."; exit 0; fi
+          git commit -m "Basketball Reference-snapshot bijwerken"
+          git push

@@ -12,6 +12,10 @@ services:
     plan: free
     healthCheckPath: /api/config
     autoDeploy: true
+    # snapshot-commits van de GitHub Action hoeven geen nieuwe deploy te starten
+    buildFilter:
+      ignoredPaths:
+        - snapshots/**
     envVars:
       - key: LEAGUE_ID
         sync: false
